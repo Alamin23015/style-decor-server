@@ -41,6 +41,9 @@ run().catch(console.dir);
 app.get('/', (req, res) => {
   res.send('StyleDecor server is running');
 })
+app.get('/services', (req, res) => {
+  res.send('StyleDecor server is running');
+})
 
 
 
