@@ -4,12 +4,18 @@ const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const app = express();
+
 const port = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
+
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
+// MongoDB URI
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@stylecluster.vqgtfle.mongodb.net/?retryWrites=true&w=majority&appName=StyleCluster`;
 
 const client = new MongoClient(uri, {
@@ -22,23 +28,21 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    
+    // Connect to MongoDB
     await client.connect();
     console.log("✅ Connected to MongoDB Atlas!");
 
-    // 2. Initialize Collections
+    // Collections
     const db = client.db("StyleDecor");
     const serviceCollection = db.collection("services");
     const bookingCollection = db.collection("bookings");
 
    
-
-    // Root Route
     app.get('/', (req, res) => {
-      res.send('StyleDecor Server is Running!');
+      res.send('StyleDecor Server is Running properly on Railway/Local!');
     });
 
-    
+    // 2. GET All Services
     app.get('/services', async (req, res) => {
       try {
         const result = await serviceCollection.find({}).toArray();
@@ -48,8 +52,6 @@ async function run() {
         res.status(500).send({ error: "Failed to fetch services" });
       }
     });
-
-    
 
     
     app.get('/services/:id', async (req, res) => {
@@ -63,15 +65,14 @@ async function run() {
       }
     });
 
+    
     app.post('/services', async (req, res) => {
       try {
         const newService = req.body;
-        // Basic validation logic...
         if (!newService.service_name || !newService.cost) {
             return res.status(400).send({ error: "Missing required fields" });
         }
         
-   
         newService.cost = parseInt(newService.cost);
         newService.createdAt = new Date();
 
@@ -83,7 +84,6 @@ async function run() {
       }
     });
 
-    // POST: Create Booking
     app.post('/bookings', async (req, res) => {
         try {
             const booking = req.body;
@@ -98,9 +98,11 @@ async function run() {
         }
     });
 
- 
+   
+
+
     app.listen(port, () => {
-      console.log(`🚀 Server is running on http://localhost:${port}`);
+      console.log(`🚀 Server is running on port: ${port}`);
     });
 
   } catch (error) {
