@@ -83,6 +83,45 @@ async function run() {
       }
     });
 
+    // ... আগের POST /services কোডের পরে এটা বসান ...
+
+    // 4. UPDATE Service (PUT) - এটা মিসিং ছিল
+    app.put('/services/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        const updatedData = req.body;
+        
+        // _id ডাটাবেসে আপডেট করা যায় না, তাই এটা বাদ দিতে হবে
+        delete updatedData._id; 
+
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            ...updatedData
+          },
+        };
+
+        const result = await serviceCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ error: "Failed to update service" });
+      }
+    });
+
+    // 5. DELETE Service (DELETE) - এটাও মিসিং ছিল
+    app.delete('/services/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await serviceCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ error: "Failed to delete service" });
+      }
+    });
+
    
     app.post('/bookings', async (req, res) => {
         try {
@@ -97,6 +136,15 @@ async function run() {
             res.status(500).send({ error: "Failed to book service" });
         }
     });
+    app.get('/admin/bookings', async (req, res) => {
+  try {
+    const result = await bookingCollection.find({}).toArray();
+    res.send(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error: "Failed to fetch all bookings" });
+  }
+});
 
    
     app.get('/bookings', async (req, res) => {
@@ -175,7 +223,24 @@ async function run() {
       }
     });
 
-    // Update User Role (Admin panel-এর জন্য, পরে দরকার হলে)
+    app.get('/admin/users', async (req, res) => {
+  try {
+    const result = await usersCollection.find({}).toArray();
+    const safeUsers = result.map(u => ({
+      _id: u._id,
+      name: u.name || u.displayName,
+      email: u.email,
+      photoURL: u.photoURL,
+      role: u.role || "user"
+    }));
+    res.send(safeUsers);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error: "Failed to fetch users" });
+  }
+});
+
+   
     app.put('/users/:email', async (req, res) => {
       try {
         const email = req.params.email;
