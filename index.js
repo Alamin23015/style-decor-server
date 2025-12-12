@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
@@ -11,7 +10,7 @@ const port = process.env.PORT || 5000;
 // Middleware
 app.use(cors({
     origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
@@ -36,7 +35,11 @@ async function run() {
     const bookingCollection = db.collection("bookings");
     const usersCollection = db.collection("users");
 
-    
+    // ==========================================
+    // SERVICES ROUTES (Public & Admin)
+    // ==========================================
+
+    // Get All Services (Used in Home & Decorator Projects)
     app.get('/services', async (req, res) => {
       try {
         const result = await serviceCollection.find({}).toArray();
@@ -46,6 +49,7 @@ async function run() {
       }
     });
 
+    // Get Single Service
     app.get('/services/:id', async (req, res) => {
       try {
         const id = req.params.id;
@@ -57,6 +61,7 @@ async function run() {
       }
     });
 
+    // Add Service (Admin)
     app.post('/services', async (req, res) => {
       try {
         const newService = req.body;
@@ -72,6 +77,7 @@ async function run() {
       }
     });
 
+    // Update Service (Admin)
     app.put('/services/:id', async (req, res) => {
       try {
         const id = req.params.id;
@@ -86,6 +92,7 @@ async function run() {
       }
     });
 
+    // Delete Service (Admin)
     app.delete('/services/:id', async (req, res) => {
       try {
         const id = req.params.id;
@@ -97,12 +104,19 @@ async function run() {
       }
     });
 
-   
+    // ==========================================
+    // BOOKING ROUTES (Client, Admin, Decorator)
+    // ==========================================
+
+    // 1. Create Booking (Client)
     app.post('/bookings', async (req, res) => {
         try {
             const booking = req.body;
-            booking.status = 'pending';
+            booking.status = 'pending';       // Initial status
+            booking.paymentStatus = 'unpaid'; // Initial payment status
             booking.bookedAt = new Date();
+            booking.decoratorEmail = null;    // Not assigned yet
+            
             const result = await bookingCollection.insertOne(booking);
             res.send(result);
         } catch (error) {
@@ -110,6 +124,7 @@ async function run() {
         }
     });
 
+    // 2. Get My Bookings (Client)
     app.get('/bookings', async (req, res) => {
       try {
         const email = req.query.email; 
@@ -122,6 +137,74 @@ async function run() {
       }
     });
 
+    // 3. Get ALL Bookings (Admin Dashboard)
+    app.get('/admin/bookings', async (req, res) => {
+      try {
+        const result = await bookingCollection.find({}).toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to fetch all bookings" });
+      }
+    });
+    
+    // Also exposing as /bookings/all for consistency
+    app.get('/bookings/all', async (req, res) => {
+      try {
+        const result = await bookingCollection.find({}).toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to fetch all bookings" });
+      }
+    });
+
+    // 4. 🔥 Get Decorator Assigned Bookings (Decorator Dashboard) 🔥
+    app.get('/bookings/decorator/:email', async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { decoratorEmail: email }; // Filter by assigned decorator
+        const result = await bookingCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to fetch decorator bookings" });
+      }
+    });
+
+    // 5. 🔥 Assign Decorator (Admin Action) 🔥
+    app.patch('/bookings/assign/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { decoratorEmail } = req.body;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: { 
+            decoratorEmail: decoratorEmail,
+            status: 'Assigned' // Status change
+          }
+        };
+        const result = await bookingCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to assign decorator" });
+      }
+    });
+
+    // 6. 🔥 Update Booking Status (Decorator Action) 🔥
+    app.patch('/bookings/status/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { status } = req.body; // e.g., 'In Progress', 'Completed'
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: { status: status }
+        };
+        const result = await bookingCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to update status" });
+      }
+    });
+
+    // 7. Delete/Cancel Booking
     app.delete('/bookings/:id', async (req, res) => {
       try {
         const id = req.params.id;
@@ -132,18 +215,25 @@ async function run() {
         res.status(500).send({ error: "Failed to delete booking" });
       }
     });
-    
-    
-    app.get('/admin/bookings', async (req, res) => {
-      try {
-        const result = await bookingCollection.find({}).toArray();
-        res.send(result);
-      } catch (error) {
-        res.status(500).send({ error: "Failed to fetch all bookings" });
-      }
+
+
+    // ==========================================
+    // USER ROUTES (Auth & Role Management)
+    // ==========================================
+
+    // Get Single User Details
+    app.get('/users/:email', async (req, res) => {
+        try {
+            const email = req.params.email;
+            const query = { email: email };
+            const result = await usersCollection.findOne(query);
+            res.send(result);
+        } catch (error) {
+            res.status(500).send({ error: "Failed to fetch user details" });
+        }
     });
 
-
+    // Save User (Login/Register)
     app.post('/users', async (req, res) => {
       try {
         const user = req.body;
@@ -152,6 +242,7 @@ async function run() {
         if (existingUser) {
           return res.send({ message: 'User already exists', insertedId: null });
         }
+        // Default Admin Logic
         if (user.email === "alamin16105@gmail.com") {
             user.role = "admin"; 
         } else {
@@ -164,6 +255,7 @@ async function run() {
       }
     });
 
+    // Check Role
     app.get('/users/role/:email', async (req, res) => {
       try {
         const email = req.params.email;
@@ -175,6 +267,7 @@ async function run() {
       }
     });
 
+    // Get All Users (Admin)
     app.get('/admin/users', async (req, res) => {
       try {
         const result = await usersCollection.find({}).toArray();
@@ -184,37 +277,40 @@ async function run() {
       }
     });
 
+    // Update User (Role, Phone, Address)
     app.put('/users/:email', async (req, res) => {
       try {
         const email = req.params.email;
-        const { role } = req.body;
+        const updatedData = req.body;
         const filter = { email: email };
-        const updateDoc = { $set: { role: role } };
-        const result = await usersCollection.updateOne(filter, updateDoc);
+        const options = { upsert: true };
+        const updateDoc = {
+            $set: { ...updatedData }
+        };
+        const result = await usersCollection.updateOne(filter, updateDoc, options);
         res.send(result);
       } catch (error) {
-        res.status(500).send({ error: "Failed to update user role" });
+        res.status(500).send({ error: "Failed to update user info" });
       }
     });
 
-    
+    // ==========================================
+    // PAYMENT ROUTES (Stripe)
+    // ==========================================
     app.post('/create-payment-intent', async (req, res) => {
       try {
         const { amount } = req.body;
-        
         if (!amount) {
             return res.status(400).send({ error: "Amount is required" });
         }
-
+        const amountInCents = Math.round(parseInt(amount) * 100);
         
-        const amountInCents = parseInt(amount) * 100;
-
         const paymentIntent = await stripe.paymentIntents.create({
           amount: amountInCents,
           currency: "bdt",
           payment_method_types: ["card"],
         });
-
+        
         res.send({
           clientSecret: paymentIntent.client_secret
         });
