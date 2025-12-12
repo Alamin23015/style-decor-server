@@ -55,18 +55,25 @@ async function run() {
     // 🔥 JWT এপিআই (লগইন বা রেজিস্টারের সময় টোকেন পাওয়ার জন্য)
     // ==========================================
     app.post('/jwt', async (req, res) => {
-      try {
-        const user = req.body;
-        const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
-        res.send({ token });
-      } catch (error) {
-        res.status(500).send({ error: "JWT generation failed" });
-      }
-    });
+  try {
+    const user = req.body;
+    console.log("JWT requested for:", user.email); // লগ এ দেখাবে
 
-    // ==========================================
-    // SERVICES ROUTES
-    // ==========================================
+    const secret = process.env.ACCESS_TOKEN_SECRET;
+    if (!secret) {
+        console.error("ERROR: ACCESS_TOKEN_SECRET is missing in environment variables!");
+        return res.status(500).send({ error: "Secret key missing on server" });
+    }
+
+    const token = jwt.sign(user, secret, { expiresIn: '1h' });
+    res.send({ token });
+  } catch (error) {
+    console.error("JWT Crash Error:", error.message);
+    res.status(500).send({ error: error.message });
+  }
+});
+
+   
   
     app.get('/services', async (req, res) => {
       try {
