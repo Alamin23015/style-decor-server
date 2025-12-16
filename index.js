@@ -57,19 +57,18 @@ async function run() {
     app.post('/jwt', async (req, res) => {
   try {
     const user = req.body;
-    console.log("JWT requested for:", user.email); // লগ এ দেখাবে
-
     const secret = process.env.ACCESS_TOKEN_SECRET;
+
     if (!secret) {
-        console.error("ERROR: ACCESS_TOKEN_SECRET is missing in environment variables!");
-        return res.status(500).send({ error: "Secret key missing on server" });
+        console.error("❌ ERROR: ACCESS_TOKEN_SECRET is missing in Railway Variables!");
+        return res.status(500).send({ error: "Secret key not found on server" });
     }
 
     const token = jwt.sign(user, secret, { expiresIn: '1h' });
     res.send({ token });
   } catch (error) {
-    console.error("JWT Crash Error:", error.message);
-    res.status(500).send({ error: error.message });
+    console.error("JWT Error:", error);
+    res.status(500).send({ error: "JWT generation failed" });
   }
 });
 
