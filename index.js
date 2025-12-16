@@ -349,7 +349,7 @@ async function run() {
       }
     });
 
-    app.get('/decorators', verifyToken, async (req, res) => {
+    app.get('/decorators',async (req, res) => {
     try {
         const query = { role: 'decorator' };
         
