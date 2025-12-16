@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const jwt = require('jsonwebtoken'); // 🔥 JWT যোগ করা হয়েছে
+const jwt = require('jsonwebtoken'); 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
@@ -16,7 +16,7 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// 🔥 JWT ভেরিফাই করার জন্য মিডলওয়্যার ফাংশন
+
 const verifyToken = (req, res, next) => {
   if (!req.headers.authorization) {
     return res.status(401).send({ message: 'unauthorized access' });
@@ -51,16 +51,14 @@ async function run() {
     const bookingCollection = db.collection("bookings");
     const usersCollection = db.collection("users");
 
-    // ==========================================
-    // 🔥 JWT এপিআই (লগইন বা রেজিস্টারের সময় টোকেন পাওয়ার জন্য)
-    // ==========================================
+    
     app.post('/jwt', async (req, res) => {
   try {
     const user = req.body;
     const secret = process.env.ACCESS_TOKEN_SECRET;
 
     if (!secret) {
-        console.error("❌ ERROR: ACCESS_TOKEN_SECRET is missing in Railway Variables!");
+        console.error("ERROR: ACCESS_TOKEN_SECRET is missing in Railway Variables!");
         return res.status(500).send({ error: "Secret key not found on server" });
     }
 
@@ -94,7 +92,7 @@ async function run() {
       }
     });
 
-    // verifyToken যোগ করা হয়েছে
+  
     app.post('/services', verifyToken, async (req, res) => {
       try {
         const newService = req.body;
@@ -135,10 +133,7 @@ async function run() {
       }
     });
 
-    // ==========================================
-    // BOOKING ROUTES
-    // ==========================================
-    
+   
     app.post('/bookings', verifyToken, async (req, res) => {
         try {
             const booking = req.body;
@@ -158,7 +153,7 @@ async function run() {
       try {
         const email = req.query.email; 
         if (!email) return res.status(400).send({ error: "Email is required" });
-        // সিকিউরিটি চেক: টোকেনের ইউজার আর ইমেইলের ইউজার এক কিনা
+        
         if (email !== req.decoded.email) {
           return res.status(403).send({ message: 'forbidden access' });
         }
@@ -191,7 +186,7 @@ async function run() {
     app.get('/bookings/decorator/:email', verifyToken, async (req, res) => {
       try {
         const email = req.params.email;
-        // সিকিউরিটি চেক
+        
         if (email !== req.decoded.email) {
           return res.status(403).send({ message: 'forbidden access' });
         }
@@ -247,9 +242,7 @@ async function run() {
       }
     });
 
-    // ==========================================
-    // USER ROUTES
-    // ==========================================
+    
 
     app.get('/users/:email', verifyToken, async (req, res) => {
         try {
@@ -302,6 +295,9 @@ async function run() {
       }
     });
 
+
+
+
     app.put('/users/:email', verifyToken, async (req, res) => {
       try {
         const email = req.params.email;
@@ -318,9 +314,7 @@ async function run() {
       }
     });
 
-    // ==========================================
-    // PAYMENT ROUTES
-    // ==========================================
+    
     app.post('/create-payment-intent', verifyToken, async (req, res) => {
       try {
         const { amount } = req.body;
@@ -336,7 +330,7 @@ async function run() {
       }
     });
 
-    // আপনার দেওয়া পেমেন্ট সাকসেস রুটটি এখানে রাখা হলো
+    
     app.patch('/bookings/payment-success/:id', async (req, res) => {
       try {
         const id = req.params.id;
@@ -354,6 +348,18 @@ async function run() {
         res.status(500).send({ error: "Failed to update payment" });
       }
     });
+
+    app.get('/decorators', verifyToken, async (req, res) => {
+    try {
+        const query = { role: 'decorator' };
+        
+       
+        const result = await usersCollection.find(query).limit(3).toArray();
+        res.send(result);
+    } catch (error) {
+        res.status(500).send({ message: "Failed to fetch decorators" });
+    }
+});
 
   } catch (error) {
     console.error("❌ MongoDB connection failed:", error);
