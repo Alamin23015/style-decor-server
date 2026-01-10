@@ -50,7 +50,7 @@ async function run() {
     const serviceCollection = db.collection("services");
     const bookingCollection = db.collection("bookings");
     const usersCollection = db.collection("users");
-
+// fixing the jwt
     
     app.post('/jwt', async (req, res) => {
   try {
